@@ -11,7 +11,7 @@ static IMAGE_EXT: [&str; 5] = ["jpg", "jpeg", "png", "gif", "webp"];
 #[clap(
     name = "Tagame",
     author = "Plat",
-    version = "v0.1.0",
+    version = "v0.1.1",
     about = "Generate or manage tag files"
 )]
 struct AppArg {
@@ -69,20 +69,20 @@ fn main() {
 }
 
 // create text file
-fn create_text_file(path_str: &String, content: String) {
+fn create_text_file(path_str: &String, content: String) -> Result<(), String> {
     let path = Path::new(path_str);
     let display = path.display();
 
     // Open a file in write-only mode, returns `io::Result<File>`
     // ファイルを書き込み専用モードで開く。返り値は`io::Result<File>`
     let mut file = match File::create(&path) {
-        Err(why) => panic!("couldn't create {}: {}", display, why),
+        Err(why) => return Err(format!("couldn't create {}: {}", display, why)),
         Ok(file) => file,
     };
 
     match file.write_all(content.as_bytes()) {
-        Err(why) => panic!("couldn't write to {}: {}", display, why),
-        Ok(_) => println!("successfully wrote to {}", display),
+        Err(why) => return Err(format!("couldn't write to {}: {}", display, why)),
+        Ok(_) => return Ok(println!("successfully wrote to {}", display)),
     }
 }
 
@@ -109,7 +109,14 @@ fn get_images_in(path_str: &String) -> Vec<String> {
 fn generate_tag_files(input: &String, tag: &String, output: &Option<String>, extension: &String) {
     let images = get_images_in(input);
     for image in images {
-        let image_file_name = Path::new(&image).file_name().unwrap().to_str().unwrap();
+        // without ext
+        let image_file_name = Path::new(&image)
+            .file_stem()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string();
+
         let mut tag_file_path = String::new();
         if output.is_some() {
             tag_file_path.push_str(output.as_ref().unwrap());
@@ -118,12 +125,18 @@ fn generate_tag_files(input: &String, tag: &String, output: &Option<String>, ext
             tag_file_path.push_str(input);
             tag_file_path.push_str("/");
         }
-        tag_file_path.push_str(image_file_name);
+        tag_file_path.push_str(&image_file_name);
         tag_file_path.push_str(".");
         tag_file_path.push_str(extension);
 
         let content = tag.clone();
-        create_text_file(&tag_file_path, content);
+        match create_text_file(&tag_file_path, content) {
+            Ok(_) => {}
+            Err(error) => {
+                // error message
+                println!("{}. Skipped", error);
+            }
+        }
 
         println!("{}", image_file_name);
     }
