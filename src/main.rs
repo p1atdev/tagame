@@ -11,7 +11,7 @@ static IMAGE_EXT: [&str; 5] = ["jpg", "jpeg", "png", "gif", "webp"];
 #[clap(
     name = "Tagame",
     author = "Plat",
-    version = "v0.1.1",
+    version = "v0.1.2",
     about = "Generate or manage tag files"
 )]
 struct AppArg {
@@ -69,12 +69,9 @@ fn main() {
 }
 
 // create text file
-fn create_text_file(path_str: &String, content: String) -> Result<(), String> {
-    let path = Path::new(path_str);
+fn create_text_file(path: &Path, content: String) -> Result<(), String> {
     let display = path.display();
 
-    // Open a file in write-only mode, returns `io::Result<File>`
-    // ファイルを書き込み専用モードで開く。返り値は`io::Result<File>`
     let mut file = match File::create(&path) {
         Err(why) => return Err(format!("couldn't create {}: {}", display, why)),
         Ok(file) => file,
@@ -110,24 +107,22 @@ fn generate_tag_files(input: &String, tag: &String, output: &Option<String>, ext
     let images = get_images_in(input);
     for image in images {
         // without ext
-        let image_file_name = Path::new(&image)
+        let mut image_file_name = Path::new(&image)
             .file_stem()
             .unwrap()
             .to_str()
             .unwrap()
             .to_string();
+        image_file_name.push_str(".");
+        image_file_name.push_str(extension);
 
-        let mut tag_file_path = String::new();
+        let mut tag_file_path_str = String::new();
         if output.is_some() {
-            tag_file_path.push_str(output.as_ref().unwrap());
-            tag_file_path.push_str("/");
+            tag_file_path_str.push_str(output.as_ref().unwrap());
         } else {
-            tag_file_path.push_str(input);
-            tag_file_path.push_str("/");
+            tag_file_path_str.push_str(input);
         }
-        tag_file_path.push_str(&image_file_name);
-        tag_file_path.push_str(".");
-        tag_file_path.push_str(extension);
+        let tag_file_path = Path::new(&tag_file_path_str).join(&image_file_name);
 
         let content = tag.clone();
         match create_text_file(&tag_file_path, content) {
